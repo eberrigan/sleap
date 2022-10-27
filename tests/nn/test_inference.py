@@ -1103,13 +1103,15 @@ def test_sleap_track(
 ):
     slp_path = str(Path(tmpdir, "old_slp.slp"))
     labels: Labels = Labels.save(centered_pair_predictions, slp_path)
+    instance_threshold = 1.0
 
     # Create sleap-track command
-    args = f"{slp_path} --model {min_centered_instance_model_path} --frames 1-3 --cpu".split()
     args = (
-        f"{slp_path} --model {min_centroid_model_path} "
-        f"--model {min_centered_instance_model_path} --video.index 0 --frames 1-3 --cpu"
+        f"--model {min_centroid_model_path} "
+        f"--model {min_centered_instance_model_path} --video.index 0 --frames 1-3 --cpu "
+        f"--instance_threshold {instance_threshold}"
     ).split()
+    args.append(slp_path)
 
     # Run inference
     sleap_track(args=args)
@@ -1117,6 +1119,22 @@ def test_sleap_track(
     # Assert predictions file exists
     output_path = f"{slp_path}.predictions.slp"
     assert Path(output_path).exists()
+    
+    labels_pr = Labels.load_file(output_path)
+
+
+    # Make sure all predictions in predictions.slp have instance score above limit
+    # loop thru every labeled frame in labels pr
+    #   loop thru every instance in labeled frame
+    #       filter instances returned based on a *hardcoded score *for-now
+    #       if no instances above score in labeled frame, remove labeled frame from labels_pr
+    
+    
+    for lf in labels_pr.labeled_frames:
+        for inst in lf.instances:
+            assert inst.score >= instance_threshold
+
+
 
     # Create invalid sleap-track command
     args = [slp_path, "--cpu"]

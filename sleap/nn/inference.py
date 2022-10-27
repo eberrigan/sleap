@@ -4411,6 +4411,13 @@ def _make_cli_parser() -> argparse.ArgumentParser:
         help="Minimum confidence map value to consider a peak as valid.",
     )
 
+    parser.add_argument(
+        "--instance_threshold",
+        type=float,
+        default=np.nan,
+        help="Filters instances with score less than specified threshold.",
+    )
+
     # Deprecated legacy args. These will still be parsed for backward compatibility but
     # are hidden from the CLI help.
     parser.add_argument(
@@ -4657,7 +4664,19 @@ def main(args: list = None):
         predictor.tracker = tracker
 
         # Run inference!
-        labels_pr = predictor.predict(provider)
+        # TODO (eb): will make changes here possibly 
+        labels_pr: Labels = predictor.predict(provider)
+        # Check if loop needs to be run
+        # loop thru every labeled frame in labels pr
+        #   loop thru every instance in labeled frame
+        #       filter instances returned based on an argument (i.e., instance_threshold) for-now
+        #       if no instances above score in labeled frame, remove labeled frame from labels_pr
+        if not np.isnan(args.instance_threshold):
+        
+            for lf in labels_pr.labeled_frames:
+                instances_new = list(filter(lambda inst: inst.score >= args.instance_threshold, lf.instances))
+                lf.instances = instances_new
+                
 
         if output_path is None:
             output_path = data_path + ".predictions.slp"
